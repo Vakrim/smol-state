@@ -135,15 +135,3 @@ export class Store<Value> {
     return this.contents;
   }
 }
-
-interface CreateUpdater<Value> {
-  (updater: (prevValue: Value) => Value): () => Promise<Value>;
-
-  <Payload>(updater: (prevValue: Value, payload: Payload) => Promise<Value>): (
-    payload: Payload
-  ) => Promise<Value>;
-
-  <Payload>(updater: (prevValue: Value, payload: Payload) => Value): (
-    payload: Payload
-  ) => Promise<Value>;
-}

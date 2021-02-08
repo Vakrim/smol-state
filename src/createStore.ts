@@ -1,4 +1,3 @@
-import { Canceled } from "./Canceled";
 import { Store, StoreConfig } from "./Store";
 
 export const createStore = <Value>(config: StoreConfig<Value>) => {
