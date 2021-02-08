@@ -1,7 +1,9 @@
-import { CanceledError } from "../src/CancelError";
-import { createStore, StoreState } from "../src/createStore";
+import { Canceled } from "../src/Canceled";
+import { createStore } from "../src/createStore";
+import { Store } from "../src/Store";
+import { StoreState } from "../src/StoreState";
 
-describe(createStore, () => {
+describe(Store, () => {
   it("stores initial value", () => {
     const store = createStore({ initial: 0 });
 
@@ -119,7 +121,7 @@ describe(createStore, () => {
     expect(store.getState()).toBe(StoreState.hasValue);
     expect(store.getValue()).toBe("override");
 
-    await expect(toBeCanceledFinished).rejects.toBeInstanceOf(CanceledError);
+    await expect(toBeCanceledFinished).rejects.toBeInstanceOf(Canceled);
     await expect(toBeCanceledFinished).rejects.toThrowError(
       "Contents update cancled"
     );
@@ -128,7 +130,7 @@ describe(createStore, () => {
   });
 });
 
-const createAsyncSetter = <T, R = any>(store: any /* TODO Store */) => {
+const createAsyncSetter = <T, R = any>(store: Store<T>) => {
   let originResolve: (value: T) => void;
   let originReject: (reason: R) => void;
 

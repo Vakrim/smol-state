@@ -1,1 +1,1 @@
-export { createStore, StoreState } from "./createStore";
+export { createStore } from "./createStore";
