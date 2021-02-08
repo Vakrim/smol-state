@@ -1,3 +1,4 @@
+import { CanceledError } from "./CancelError";
 import { isPromise } from "./isPromise";
 
 interface CreateUpdater<Value> {
@@ -43,17 +44,21 @@ export const createStore = <Value>({ initial }: { initial: Value }) => {
       state = StoreState.loading;
       asyncContents = newValue
         .then((newContents) => {
-          if (changeVersion === version) {
-            contents = newContents;
-            state = StoreState.hasValue;
+          if (changeVersion !== version) {
+            throw new CanceledError("Contents update cancled");
           }
+
+          contents = newContents;
+          state = StoreState.hasValue;
           return contents;
         })
         .catch((error) => {
-          if (changeVersion === version) {
-            contents = error;
-            state = StoreState.hasError;
+          if (changeVersion !== version) {
+            throw new CanceledError("Contents update cancled");
           }
+
+          contents = error;
+          state = StoreState.hasError;
           throw contents;
         });
       return asyncContents;

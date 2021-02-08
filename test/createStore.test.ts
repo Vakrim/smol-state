@@ -1,3 +1,4 @@
+import { CanceledError } from "../src/CancelError";
 import { createStore, StoreState } from "../src/createStore";
 
 describe(createStore, () => {
@@ -56,17 +57,80 @@ describe(createStore, () => {
     expect(store.getValue()).toBe(5);
     expect(store.valueMaybe()).toBe(5);
     expect(store.errorMaybe()).toBe(undefined);
+    expect(storeChanged).toBe(asyncSetterFinished);
     await expect(storeChanged).resolves.toBe(5);
   });
 
-  it("handles async values that rejects", () => {});
+  it("handles async values that rejects", async () => {
+    const store = createStore({ initial: 0 });
 
-  it("handles async race", () => {});
+    const { asyncSetter, reject } = createAsyncSetter<number>(store);
+
+    const asyncSetterFinished = asyncSetter();
+
+    expect(store.getState()).toBe(StoreState.loading);
+    expect(() => store.getValue()).toThrowError(Promise);
+    expect(store.valueMaybe()).toBe(undefined);
+    expect(store.errorMaybe()).toBe(undefined);
+
+    const storeChanged = store.toPromise();
+
+    reject("whoops");
+    try {
+      await asyncSetterFinished;
+    } catch (error) {}
+
+    expect(store.getState()).toBe(StoreState.hasError);
+    expect(() => store.getValue()).toThrowError("whoops");
+    expect(store.valueMaybe()).toBe(undefined);
+    expect(store.errorMaybe()).toBe("whoops");
+    expect(storeChanged).toBe(asyncSetterFinished);
+    await expect(storeChanged).rejects.toBe("whoops");
+  });
+
+  it("handles async race by canceling previous update", async () => {
+    const store = createStore({ initial: "initial" });
+
+    const {
+      asyncSetter: asyncSetterToBeCanceled,
+      resolve: resolveToBeCanceled,
+    } = createAsyncSetter<string>(store);
+
+    const {
+      asyncSetter: asyncSetterOverrides,
+      resolve: resolveOverrides,
+    } = createAsyncSetter<string>(store);
+
+    expect(store.getState()).toBe(StoreState.hasValue);
+
+    const toBeCanceledFinished = asyncSetterToBeCanceled();
+
+    expect(store.getState()).toBe(StoreState.loading);
+
+    const overridesFinished = asyncSetterOverrides();
+
+    expect(store.getState()).toBe(StoreState.loading);
+
+    resolveOverrides("override");
+    resolveToBeCanceled("toBeCanceled");
+
+    await store.toPromise();
+
+    expect(store.getState()).toBe(StoreState.hasValue);
+    expect(store.getValue()).toBe("override");
+
+    await expect(toBeCanceledFinished).rejects.toBeInstanceOf(CanceledError);
+    await expect(toBeCanceledFinished).rejects.toThrowError(
+      "Contents update cancled"
+    );
+
+    await expect(overridesFinished).resolves.toBe("override");
+  });
 });
 
-const createAsyncSetter = <T>(store: any /* TODO Store */) => {
+const createAsyncSetter = <T, R = any>(store: any /* TODO Store */) => {
   let originResolve: (value: T) => void;
-  let originReject: (reason: T) => void;
+  let originReject: (reason: R) => void;
 
   const asyncSetter = store.createSetter(async () => {
     const promise = new Promise<T>((resolvePromise, rejectPromise) => {
@@ -82,7 +146,7 @@ const createAsyncSetter = <T>(store: any /* TODO Store */) => {
     resolve: (value: T) => {
       originResolve(value);
     },
-    reject: (reason: T) => {
+    reject: (reason: R) => {
       originReject(reason);
     },
   };
