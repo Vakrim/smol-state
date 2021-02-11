@@ -34,5 +34,10 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/Vakrim/smol-state.git"
+  },
+  "release": {
+    "branches": [
+      "main"
+    ]
   }
 }
