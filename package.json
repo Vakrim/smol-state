@@ -1,7 +1,7 @@
 {
   "name": "smol-state",
   "version": "0.1.1",
-  "main": "dist/cjs/index.js",
+  "main": "dist/cjs/main.js",
   "module": "dist/esm/main.js",
   "browser": "dist/umd/main.js",
   "dependencies": {},
