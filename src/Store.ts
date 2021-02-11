@@ -1,16 +1,23 @@
 import { Canceled } from "./Canceled";
 import { isPromise } from "./isPromise";
+import { Snapshot } from "./Snapshot";
 import { StoreState } from "./StoreState";
 
 export interface StoreConfig<Value> {
   initial: Value;
 }
 
-export class Store<Value> {
+interface Subscriber<Value, Err> {
+  (snapshot: Snapshot<Value, Err>): void;
+}
+
+export class Store<Value, Err = unknown> {
   private contents: Value;
+  private errorContents!: Err;
   private asyncContents: Promise<Value>;
   private state: StoreState = StoreState.hasValue;
   private version = 0;
+  private subscribers: Set<Subscriber<Value, Err>> = new Set();
 
   constructor({ initial }: StoreConfig<Value>) {
     this.contents = initial;
@@ -22,6 +29,8 @@ export class Store<Value> {
 
     if (isPromise(newValue)) {
       this.state = StoreState.loading;
+      this.emitSnapshots();
+
       this.asyncContents = newValue
         .then((newContents) => {
           if (changeVersion !== this.version) {
@@ -30,6 +39,8 @@ export class Store<Value> {
 
           this.contents = newContents;
           this.state = StoreState.hasValue;
+          this.emitSnapshots();
+
           return this.contents;
         })
         .catch((error) => {
@@ -37,17 +48,46 @@ export class Store<Value> {
             throw new Canceled("Contents update cancled");
           }
 
-          this.contents = error;
+          this.errorContents = error;
           this.state = StoreState.hasError;
-          throw this.contents;
+          this.emitSnapshots();
+
+          throw this.errorContents;
         });
       return this.asyncContents;
     } else {
       this.contents = newValue;
       this.asyncContents = Promise.resolve(this.contents);
       this.state = StoreState.hasValue;
+      this.emitSnapshots();
+
       return this.asyncContents;
     }
+  }
+
+  private emitSnapshots() {
+    const snapshot: Snapshot<Value, Err> =
+      this.state === StoreState.hasValue
+        ? { state: StoreState.hasValue, contents: this.contents }
+        : this.state === StoreState.loading
+        ? { state: StoreState.loading }
+        : { state: StoreState.hasError, contents: this.errorContents };
+
+    for (let listener of this.subscribers) {
+      listener(snapshot);
+    }
+  }
+
+  public subscribe(subscriber: Subscriber<Value, Err>) {
+    this.subscribers.add(subscriber);
+
+    return () => {
+      this.unsubscribe(subscriber);
+    };
+  }
+
+  public unsubscribe(subscriber: Subscriber<Value, Err>) {
+    this.subscribers.delete(subscriber);
   }
 
   public createUpdater(
@@ -95,7 +135,7 @@ export class Store<Value> {
       throw this.asyncContents;
     }
     if (this.state === StoreState.hasError) {
-      throw this.contents;
+      throw this.errorContents;
     }
     return this.contents;
   }
@@ -132,6 +172,6 @@ export class Store<Value> {
     if (this.state !== StoreState.hasError) {
       return;
     }
-    return this.contents;
+    return this.errorContents;
   }
 }
