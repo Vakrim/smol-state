@@ -1,2 +1,2 @@
 export { createStore } from "./createStore";
-export { StoreState } from "./StoreState";
+export { LoadableState as StoreState } from "./LoadableState";

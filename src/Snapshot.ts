@@ -1,16 +1,16 @@
-import { StoreState } from "./StoreState";
+import { LoadableState } from "./LoadableState";
 
 interface HasValueSnapshot<Value> {
-  state: StoreState.hasValue;
+  state: LoadableState.hasValue;
   contents: Value;
 }
 
 interface LoadingSnapshot {
-  state: StoreState.loading;
+  state: LoadableState.loading;
 }
 
 interface HasErrorSnapshot<Err> {
-  state: StoreState.hasError;
+  state: LoadableState.hasError;
   contents: Err;
 }
 
