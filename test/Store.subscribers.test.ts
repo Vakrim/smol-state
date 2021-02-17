@@ -1,5 +1,5 @@
 import { createStore } from "../src/main";
-import { Snapshot } from "../src/Snapshot";
+import { Loadable } from "../src/Loadable";
 import { Store } from "../src/Store";
 import { LoadableState } from "../src/LoadableState";
 
@@ -9,7 +9,7 @@ describe(Store, () => {
       initial: "initial",
     });
 
-    const subscriber = jest.fn<void, [Snapshot<string>]>();
+    const subscriber = jest.fn<void, [Loadable<string>]>();
 
     store.subscribe(subscriber);
 
@@ -44,7 +44,7 @@ describe(Store, () => {
       initial: "initial",
     });
 
-    const subscriber = jest.fn<void, [Snapshot<string>]>();
+    const subscriber = jest.fn<void, [Loadable<string>]>();
 
     const unsubscribe = store.subscribe(subscriber);
 

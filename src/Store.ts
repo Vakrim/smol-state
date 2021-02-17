@@ -1,6 +1,5 @@
 import { Canceled } from "./Canceled";
 import { isPromise } from "./isPromise";
-import { Snapshot } from "./Snapshot";
 import { LoadableState } from "./LoadableState";
 import { createError, createLoading, createValue, Loadable } from "./Loadable";
 
@@ -9,7 +8,7 @@ export interface StoreConfig<Value> {
 }
 
 interface Subscriber<Value, Err> {
-  (snapshot: Snapshot<Value, Err>): void;
+  (loadable: Loadable<Value, Err>): void;
 }
 
 export class Store<Value, Err = unknown> {
