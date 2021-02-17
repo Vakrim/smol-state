@@ -1,13 +1,13 @@
 import { Canceled } from "../src/Canceled";
 import { createStore } from "../src/createStore";
 import { Store } from "../src/Store";
-import { StoreState } from "../src/StoreState";
+import { LoadableState } from "../src/LoadableState";
 
 describe(Store, () => {
   it("stores initial value", () => {
     const store = createStore({ initial: 0 });
 
-    expect(store.getValue()).toBe(0);
+    expect(store.getLoadable().getValue()).toBe(0);
   });
 
   it("creates setters", () => {
@@ -15,13 +15,13 @@ describe(Store, () => {
     const setToThree = store.createSetter(() => 3);
     const setTo = store.createSetter((n: number) => n);
 
-    expect(store.getValue()).toBe(0);
+    expect(store.getLoadable().getValue()).toBe(0);
 
     setToThree();
-    expect(store.getValue()).toBe(3);
+    expect(store.getLoadable().getValue()).toBe(3);
 
     setTo(12);
-    expect(store.getValue()).toBe(12);
+    expect(store.getLoadable().getValue()).toBe(12);
   });
 
   it("creates updaters", () => {
@@ -29,13 +29,13 @@ describe(Store, () => {
     const increase = store.createUpdater((c) => c + 1);
     const increaseBy = store.createUpdater((c: number, n: number) => c + n);
 
-    expect(store.getValue()).toBe(0);
+    expect(store.getLoadable().getValue()).toBe(0);
 
     increase();
-    expect(store.getValue()).toBe(1);
+    expect(store.getLoadable().getValue()).toBe(1);
 
     increaseBy(12);
-    expect(store.getValue()).toBe(13);
+    expect(store.getLoadable().getValue()).toBe(13);
   });
 
   it("handles async values that resolves", async () => {
@@ -45,20 +45,20 @@ describe(Store, () => {
 
     const asyncSetterFinished = asyncSetter();
 
-    expect(store.getState()).toBe(StoreState.loading);
-    expect(() => store.getValue()).toThrowError(Promise);
-    expect(store.valueMaybe()).toBe(undefined);
-    expect(store.errorMaybe()).toBe(undefined);
+    expect(store.getLoadable().state).toBe(LoadableState.loading);
+    expect(() => store.getLoadable().getValue()).toThrowError(Promise);
+    expect(store.getLoadable().valueMaybe()).toBe(undefined);
+    expect(store.getLoadable().errorMaybe()).toBe(undefined);
 
-    const storeChanged = store.toPromise();
+    const storeChanged = store.getLoadable().toPromise();
 
     resolve(5);
     await asyncSetterFinished;
 
-    expect(store.getState()).toBe(StoreState.hasValue);
-    expect(store.getValue()).toBe(5);
-    expect(store.valueMaybe()).toBe(5);
-    expect(store.errorMaybe()).toBe(undefined);
+    expect(store.getLoadable().state).toBe(LoadableState.hasValue);
+    expect(store.getLoadable().getValue()).toBe(5);
+    expect(store.getLoadable().valueMaybe()).toBe(5);
+    expect(store.getLoadable().errorMaybe()).toBe(undefined);
     expect(storeChanged).toBe(asyncSetterFinished);
     await expect(storeChanged).resolves.toBe(5);
   });
@@ -70,22 +70,22 @@ describe(Store, () => {
 
     const asyncSetterFinished = asyncSetter();
 
-    expect(store.getState()).toBe(StoreState.loading);
-    expect(() => store.getValue()).toThrowError(Promise);
-    expect(store.valueMaybe()).toBe(undefined);
-    expect(store.errorMaybe()).toBe(undefined);
+    expect(store.getLoadable().state).toBe(LoadableState.loading);
+    expect(() => store.getLoadable().getValue()).toThrowError(Promise);
+    expect(store.getLoadable().valueMaybe()).toBe(undefined);
+    expect(store.getLoadable().errorMaybe()).toBe(undefined);
 
-    const storeChanged = store.toPromise();
+    const storeChanged = store.getLoadable().toPromise();
 
     reject("whoops");
     try {
       await asyncSetterFinished;
     } catch (error) {}
 
-    expect(store.getState()).toBe(StoreState.hasError);
-    expect(() => store.getValue()).toThrowError("whoops");
-    expect(store.valueMaybe()).toBe(undefined);
-    expect(store.errorMaybe()).toBe("whoops");
+    expect(store.getLoadable().state).toBe(LoadableState.hasError);
+    expect(() => store.getLoadable().getValue()).toThrowError("whoops");
+    expect(store.getLoadable().valueMaybe()).toBe(undefined);
+    expect(store.getLoadable().errorMaybe()).toBe("whoops");
     expect(storeChanged).toBe(asyncSetterFinished);
     await expect(storeChanged).rejects.toBe("whoops");
   });
@@ -103,23 +103,23 @@ describe(Store, () => {
       resolve: resolveOverrides,
     } = createAsyncSetter<string>(store);
 
-    expect(store.getState()).toBe(StoreState.hasValue);
+    expect(store.getLoadable().state).toBe(LoadableState.hasValue);
 
     const toBeCanceledFinished = asyncSetterToBeCanceled();
 
-    expect(store.getState()).toBe(StoreState.loading);
+    expect(store.getLoadable().state).toBe(LoadableState.loading);
 
     const overridesFinished = asyncSetterOverrides();
 
-    expect(store.getState()).toBe(StoreState.loading);
+    expect(store.getLoadable().state).toBe(LoadableState.loading);
 
     resolveOverrides("override");
     resolveToBeCanceled("toBeCanceled");
 
-    await store.toPromise();
+    await store.getLoadable().toPromise();
 
-    expect(store.getState()).toBe(StoreState.hasValue);
-    expect(store.getValue()).toBe("override");
+    expect(store.getLoadable().state).toBe(LoadableState.hasValue);
+    expect(store.getLoadable().getValue()).toBe("override");
 
     await expect(toBeCanceledFinished).rejects.toBeInstanceOf(Canceled);
     await expect(toBeCanceledFinished).rejects.toThrowError(

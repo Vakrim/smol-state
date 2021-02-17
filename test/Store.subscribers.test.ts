@@ -1,7 +1,7 @@
 import { createStore } from "../src/main";
-import { Snapshot } from "../src/Snapshot";
+import { Loadable } from "../src/Loadable";
 import { Store } from "../src/Store";
-import { StoreState } from "../src/StoreState";
+import { LoadableState } from "../src/LoadableState";
 
 describe(Store, () => {
   it("can be subscribed to", async () => {
@@ -9,7 +9,7 @@ describe(Store, () => {
       initial: "initial",
     });
 
-    const subscriber = jest.fn<void, [Snapshot<string>]>();
+    const subscriber = jest.fn<void, [Loadable<string>]>();
 
     store.subscribe(subscriber);
 
@@ -26,14 +26,15 @@ describe(Store, () => {
 
     expect(subscriber).toHaveBeenCalledTimes(3);
     expect(subscriber).toHaveBeenNthCalledWith(1, {
-      state: StoreState.hasValue,
+      state: LoadableState.hasValue,
       contents: "sync setted",
     });
     expect(subscriber).toHaveBeenNthCalledWith(2, {
-      state: StoreState.loading,
+      state: LoadableState.loading,
+      contents: expect.any(Promise),
     });
     expect(subscriber).toHaveBeenNthCalledWith(3, {
-      state: StoreState.hasValue,
+      state: LoadableState.hasValue,
       contents: "async setted",
     });
   });
@@ -43,7 +44,7 @@ describe(Store, () => {
       initial: "initial",
     });
 
-    const subscriber = jest.fn<void, [Snapshot<string>]>();
+    const subscriber = jest.fn<void, [Loadable<string>]>();
 
     const unsubscribe = store.subscribe(subscriber);
 
@@ -62,11 +63,12 @@ describe(Store, () => {
 
     expect(subscriber).toHaveBeenCalledTimes(2);
     expect(subscriber).toHaveBeenNthCalledWith(1, {
-      state: StoreState.hasValue,
+      state: LoadableState.hasValue,
       contents: "sync setted",
     });
     expect(subscriber).toHaveBeenNthCalledWith(2, {
-      state: StoreState.loading,
+      state: LoadableState.loading,
+      contents: expect.any(Promise),
     });
   });
 });

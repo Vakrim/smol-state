@@ -1,81 +1,67 @@
 import { Canceled } from "./Canceled";
 import { isPromise } from "./isPromise";
-import { Snapshot } from "./Snapshot";
-import { StoreState } from "./StoreState";
+import { LoadableState } from "./LoadableState";
+import { createError, createLoading, createValue, Loadable } from "./Loadable";
 
 export interface StoreConfig<Value> {
   initial: Value;
 }
 
 interface Subscriber<Value, Err> {
-  (snapshot: Snapshot<Value, Err>): void;
+  (loadable: Loadable<Value, Err>): void;
 }
 
 export class Store<Value, Err = unknown> {
-  private contents: Value;
-  private errorContents!: Err;
-  private asyncContents: Promise<Value>;
-  private state: StoreState = StoreState.hasValue;
+  private loadable: Loadable<Value, Err>;
   private version = 0;
   private subscribers: Set<Subscriber<Value, Err>> = new Set();
 
   constructor({ initial }: StoreConfig<Value>) {
-    this.contents = initial;
-    this.asyncContents = Promise.resolve(this.contents);
+    this.loadable = createValue(initial);
   }
 
   private setContents(newValue: Value | Promise<Value>) {
     const changeVersion = ++this.version;
 
     if (isPromise(newValue)) {
-      this.state = StoreState.loading;
-      this.emitSnapshots();
-
-      this.asyncContents = newValue
+      const loading = newValue
         .then((newContents) => {
           if (changeVersion !== this.version) {
             throw new Canceled("Contents update cancled");
           }
 
-          this.contents = newContents;
-          this.state = StoreState.hasValue;
+          this.loadable = createValue(newContents);
           this.emitSnapshots();
 
-          return this.contents;
+          return newContents;
         })
         .catch((error) => {
           if (changeVersion !== this.version) {
             throw new Canceled("Contents update cancled");
           }
 
-          this.errorContents = error;
-          this.state = StoreState.hasError;
+          this.loadable = createError(error);
           this.emitSnapshots();
 
-          throw this.errorContents;
+          throw error;
         });
-      return this.asyncContents;
-    } else {
-      this.contents = newValue;
-      this.asyncContents = Promise.resolve(this.contents);
-      this.state = StoreState.hasValue;
-      this.emitSnapshots();
 
-      return this.asyncContents;
+      this.loadable = createLoading(loading);
+      this.emitSnapshots();
+    } else {
+      this.loadable = createValue(newValue);
+      this.emitSnapshots();
     }
   }
 
   private emitSnapshots() {
-    const snapshot: Snapshot<Value, Err> =
-      this.state === StoreState.hasValue
-        ? { state: StoreState.hasValue, contents: this.contents }
-        : this.state === StoreState.loading
-        ? { state: StoreState.loading }
-        : { state: StoreState.hasError, contents: this.errorContents };
-
     for (let listener of this.subscribers) {
-      listener(snapshot);
+      listener(this.loadable);
     }
+  }
+
+  public getLoadable() {
+    return this.loadable;
   }
 
   public subscribe(subscriber: Subscriber<Value, Err>) {
@@ -100,12 +86,14 @@ export class Store<Value, Err = unknown> {
     updater: (prevValue: Value, payload?: Payload) => Value | Promise<Value>
   ) {
     return (payload?: Payload): Promise<Value> => {
-      if (this.state === StoreState.loading) {
-        throw new Error("Can't update contents while in loading state");
+      if (this.loadable.state !== LoadableState.hasValue) {
+        throw new Error("Can't update contents when store hasn't stable value");
       }
-      const updateResult = updater(this.contents, payload);
+      const updateResult = updater(this.loadable.contents, payload);
 
-      return this.setContents(updateResult);
+      this.setContents(updateResult);
+
+      return this.loadable.toPromise();
     };
   }
 
@@ -121,57 +109,9 @@ export class Store<Value, Err = unknown> {
     return (payload?: Payload): Promise<Value> => {
       const setResult = setter(payload);
 
-      return this.setContents(setResult);
+      this.setContents(setResult);
+
+      return this.loadable.toPromise();
     };
-  }
-
-  /**
-   *  Method to access the value that matches the semantics of React Suspense and Recoil selectors.
-   *  If the state has a value then it returns a value, if it has an error then it throws that error,
-   *  and if it is still pending then it suspends execution or rendering to propagate the pending state.
-   */
-  public getValue() {
-    if (this.state === StoreState.loading) {
-      throw this.asyncContents;
-    }
-    if (this.state === StoreState.hasError) {
-      throw this.errorContents;
-    }
-    return this.contents;
-  }
-
-  /**
-   * Returns a Promise that will resolve when the selector has resolved.
-   * If the selector is synchronous or has already resolved, it returns a Promise that resolves immediately.
-   */
-  public toPromise() {
-    return this.asyncContents;
-  }
-
-  /**
-   * Return state of store
-   */
-  public getState() {
-    return this.state;
-  }
-
-  /**
-   * Returns the value if available, otherwise returns undefined
-   */
-  public valueMaybe() {
-    if (this.state !== StoreState.hasValue) {
-      return;
-    }
-    return this.contents;
-  }
-
-  /**
-   * Returns the error if available, otherwise returns undefined
-   */
-  public errorMaybe() {
-    if (this.state !== StoreState.hasError) {
-      return;
-    }
-    return this.errorContents;
   }
 }
