@@ -27,6 +27,6 @@ jobs:
               repo: context.repo.repo,
               head: 'chore/dependencies',
               base: 'main',
-              title: 'Bump dependencies',
+              title: 'chore: bump dependencies',
               maintainer_can_modify: true,
             });
