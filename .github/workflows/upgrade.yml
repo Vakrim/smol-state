@@ -1,0 +1,31 @@
+name: Upgrade dependencies
+
+on: push
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: "main"
+      - run: |
+          yarn upgrade
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git checkout -B chore/dependencies
+          git add .
+          git commit -m "bump dependencies"
+          git push --force
+      - uses: actions/github-script@v3
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            github.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head: 'chore/dependencies',
+              base: 'main',
+              maintainer_can_modify: true
+            });
