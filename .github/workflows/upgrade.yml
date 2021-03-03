@@ -17,7 +17,7 @@ jobs:
           git checkout -B chore/dependencies
           git add .
           git commit -m "bump dependencies"
-          git push --force
+          git push --set-upstream origin chore/dependencies --force
       - uses: actions/github-script@v3
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
