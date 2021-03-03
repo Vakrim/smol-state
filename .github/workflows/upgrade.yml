@@ -10,6 +10,7 @@ jobs:
       - uses: actions/checkout@v2
         with:
           ref: "main"
+          ssh-key: ${{ secrets.BUMP_DEPENDENCIES_RSA }}
       - run: |
           yarn upgrade
           git config user.name github-actions
